@@ -1,0 +1,1 @@
+python run.py -c TRUE -r data/ratings_clothing.csv -i data/clothing.dat -m 2 -t 0.2 -a data/m2 -d data/m2/0.2
