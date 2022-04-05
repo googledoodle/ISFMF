@@ -6,7 +6,9 @@ import math
 import numpy as np
 from dl_models.conv import CNN_module
 from dl_models.isf import ISF_module
-from dl_models.isf_new import NISF_module
+from dl_models.isf_u import ISF_U_module
+from dl_models.ddf import DDF_module
+
 
 def ConvMF(res_dir, train_user, train_item, valid_user, test_user,
            R, CNN_X, vocab_size, init_W=None, give_item_weight=True,
@@ -131,7 +133,7 @@ def ISFMF(res_dir, train_user, train_item, valid_user, test_user,
     # explicit setting
     a = 1
     b = 0
-    total = 0
+
     num_user = R.shape[0]
     num_item = R.shape[1]
     PREV_LOSS = 1e-50
@@ -216,7 +218,7 @@ def ISFMF(res_dir, train_user, train_item, valid_user, test_user,
 
         toc = time.time()
         elapsed = toc - tic
-        total += elapsed
+
         converge = abs((loss - PREV_LOSS) / PREV_LOSS)
 
         if (val_eval < pre_val_eval):
@@ -229,10 +231,10 @@ def ISFMF(res_dir, train_user, train_item, valid_user, test_user,
 
         pre_val_eval = val_eval
 
-        print("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f time: %.4f" % (
-            loss, elapsed, converge, tr_eval, val_eval, te_eval, total))
-        f1.write("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f time: %.4f\n" % (
-            loss, elapsed, converge, tr_eval, val_eval, te_eval, total))
+        print("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
+        f1.write("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f\n" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
 
         if (count == endure_count):
             break
@@ -242,14 +244,12 @@ def ISFMF(res_dir, train_user, train_item, valid_user, test_user,
     f1.close()
 
 
-def NISFMF(res_dir, train_user, train_item, valid_user, test_user,
-           R, image, image_size, give_item_weight=True,
+def DISFMF(res_dir, train_user, train_item, valid_user, test_user,
+           R, image, image_u, image_size, image_num, give_weight=True,
            max_iter=50, lambda_u=1, lambda_v=100, dimension=50, dropout_rate=0.2):
     # explicit setting
     a = 1
     b = 0
-
-    total = 0
 
     num_user = R.shape[0]
     num_item = R.shape[1]
@@ -263,19 +263,27 @@ def NISFMF(res_dir, train_user, train_item, valid_user, test_user,
     Test_R = test_user[1]
     Valid_R = valid_user[1]
 
-    if give_item_weight is True:
+    if give_weight is True:
+        user_weight = np.array([math.sqrt(len(i))
+                                for i in Train_R_I], dtype=float)
+        user_weight = (float(num_user) / user_weight.sum()) * user_weight
+
         item_weight = np.array([math.sqrt(len(i))
                                 for i in Train_R_J], dtype=float)
         item_weight = (float(num_item) / item_weight.sum()) * item_weight
     else:
+        user_weight = np.ones(num_user, dtype=float)
         item_weight = np.ones(num_item, dtype=float)
 
     pre_val_eval = 1e10
 
-    isf_module = NISF_module(dimension, image_size)
+    isf_u_module = ISF_U_module(dimension, image_size, image_num)
+    alpha = isf_u_module.get_projection_layer(image_u)
+
+    isf_module = ISF_module(dimension, image_size)
     theta = isf_module.get_projection_layer(image)
-    np.random.seed(133)
-    U = np.random.uniform(size=(num_user, dimension))
+
+    U = alpha
     V = theta
 
     endure_count = 5
@@ -286,20 +294,27 @@ def NISFMF(res_dir, train_user, train_item, valid_user, test_user,
         print("%d iteration\t(patience: %d)" % (iteration, count))
 
         VV = b * (V.T.dot(V)) + lambda_u * np.eye(dimension)
-        sub_loss = np.zeros(num_user)
+        # sub_loss = np.zeros(num_user)
 
         for i in range(num_user):
             idx_item = train_user[0][i]
             V_i = V[idx_item]
             R_i = Train_R_I[i]
             A = VV + (a - b) * (V_i.T.dot(V_i))
-            B = (a * V_i * (np.tile(R_i, (dimension, 1)).T)).sum(0)
+            B = (a * V_i * (np.tile(R_i, (dimension, 1)).T)).sum(0) + \
+                lambda_u * user_weight[i] * alpha[i]
 
             U[i] = np.linalg.solve(A, B)
 
-            sub_loss[i] = -0.5 * lambda_u * np.dot(U[i], U[i])
+            # sub_loss[i] = -0.5 * lambda_u * np.dot(U[i], U[i])
 
-        loss = loss + np.sum(sub_loss)
+        # loss = loss + np.sum(sub_loss)
+        seed_u = np.random.randint(100000)
+
+        history_u = isf_u_module.train(image_u, U, user_weight, seed_u)
+        alpha = isf_u_module.get_projection_layer(image_u)
+
+        loss = loss - 0.5 * lambda_u * history_u.history['loss'][-1] * num_user
 
         sub_loss = np.zeros(num_item)
         UU = b * (U.T.dot(U))
@@ -335,7 +350,7 @@ def NISFMF(res_dir, train_user, train_item, valid_user, test_user,
 
         toc = time.time()
         elapsed = toc - tic
-        total += elapsed
+
         converge = abs((loss - PREV_LOSS) / PREV_LOSS)
 
         if (val_eval < pre_val_eval):
@@ -343,15 +358,16 @@ def NISFMF(res_dir, train_user, train_item, valid_user, test_user,
             np.savetxt(res_dir + '/U.dat', U)
             np.savetxt(res_dir + '/V.dat', V)
             np.savetxt(res_dir + '/theta.dat', theta)
+            np.savetxt(res_dir + '/alpha.dat', alpha)
         else:
             count = count + 1
 
         pre_val_eval = val_eval
 
-        print("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f Time:%.4f" % (
-            loss, elapsed, converge, tr_eval, val_eval, te_eval, total))
-        f1.write("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f Time:%.4f\n" % (
-            loss, elapsed, converge, tr_eval, val_eval, te_eval, total))
+        print("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
+        f1.write("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f\n" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
 
         if (count == endure_count):
             break
@@ -440,6 +456,123 @@ def PMF(res_dir, train_user, train_item, valid_user, test_user,
         if (val_eval < pre_val_eval):
             np.savetxt(res_dir + '/U.dat', U)
             np.savetxt(res_dir + '/V.dat', V)
+        else:
+            count = count + 1
+
+        pre_val_eval = val_eval
+
+        print("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
+        f1.write("Loss: %.5f Elpased: %.4fs Converge: %.6f Tr: %.5f Val: %.5f Te: %.5f\n" % (
+            loss, elapsed, converge, tr_eval, val_eval, te_eval))
+
+        if (count == endure_count):
+            break
+
+        PREV_LOSS = loss
+
+    f1.close()
+
+
+def DDFMF(res_dir, train_user, train_item, valid_user, test_user,
+          R, CNN_X, vocab_size, images, image_size, give_item_weight=True,
+          max_iter=50, lambda_u=1, lambda_v=100, dimension=50,
+          dropout_rate=0.2, emb_dim=200, max_len=300, num_kernel_per_ws=100):
+    # explicit setting
+    a = 1
+    b = 0
+
+    num_user = R.shape[0]
+    num_item = R.shape[1]
+    PREV_LOSS = 1e-50
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+    f1 = open(res_dir + '/state.log', 'w')
+
+    Train_R_I = train_user[1]
+    Train_R_J = train_item[1]
+    Test_R = test_user[1]
+    Valid_R = valid_user[1]
+
+    if give_item_weight is True:
+        item_weight = np.array([math.sqrt(len(i))
+                                for i in Train_R_J], dtype=float)
+        item_weight = (float(num_item) / item_weight.sum()) * item_weight
+    else:
+        item_weight = np.ones(num_item, dtype=float)
+
+    pre_val_eval = 1e10
+
+    ddf_module = DDF_module(dimension, vocab_size, image_size, dropout_rate,
+                            emb_dim, max_len, num_kernel_per_ws)
+    theta = ddf_module.get_projection_layer(images, CNN_X)
+    np.random.seed(133)
+    U = np.random.uniform(size=(num_user, dimension))
+    V = theta
+
+    endure_count = 5
+    count = 0
+    for iteration in range(max_iter):
+        loss = 0
+        tic = time.time()
+        print("%d iteration\t(patience: %d)" % (iteration, count))
+
+        VV = b * (V.T.dot(V)) + lambda_u * np.eye(dimension)
+        sub_loss = np.zeros(num_user)
+
+        for i in range(num_user):
+            idx_item = train_user[0][i]
+            V_i = V[idx_item]
+            R_i = Train_R_I[i]
+            A = VV + (a - b) * (V_i.T.dot(V_i))
+            B = (a * V_i * (np.tile(R_i, (dimension, 1)).T)).sum(0)
+
+            U[i] = np.linalg.solve(A, B)
+
+            sub_loss[i] = -0.5 * lambda_u * np.dot(U[i], U[i])
+
+        loss = loss + np.sum(sub_loss)
+
+        sub_loss = np.zeros(num_item)
+        UU = b * (U.T.dot(U))
+        for j in range(num_item):
+            idx_user = train_item[0][j]
+            U_j = U[idx_user]
+            R_j = Train_R_J[j]
+
+            tmp_A = UU + (a - b) * (U_j.T.dot(U_j))
+            A = tmp_A + lambda_v * item_weight[j] * np.eye(dimension)
+            B = (a * U_j * (np.tile(R_j, (dimension, 1)).T)
+                 ).sum(0) + lambda_v * item_weight[j] * theta[j]
+            V[j] = np.linalg.solve(A, B)
+
+            sub_loss[j] = -0.5 * np.square(R_j * a).sum()
+            sub_loss[j] = sub_loss[j] + a * np.sum((U_j.dot(V[j])) * R_j)
+
+            sub_loss[j] = sub_loss[j] - 0.5 * np.dot(V[j].dot(tmp_A), V[j])
+
+        loss = loss + np.sum(sub_loss)
+        seed = np.random.randint(100000)
+        history = ddf_module.train(images, CNN_X, V, item_weight, seed)
+        theta = ddf_module.get_projection_layer(images, CNN_X)
+        cnn_loss = history.history['loss'][-1]
+
+        loss = loss - 0.5 * lambda_v * cnn_loss * num_item
+
+        tr_eval = eval_RMSE(Train_R_I, U, V, train_user[0])
+        val_eval = eval_RMSE(Valid_R, U, V, valid_user[0])
+        te_eval = eval_RMSE(Test_R, U, V, test_user[0])
+
+        toc = time.time()
+        elapsed = toc - tic
+
+        converge = abs((loss - PREV_LOSS) / PREV_LOSS)
+
+        if (val_eval < pre_val_eval):
+            ddf_module.save_model(res_dir + '/CNN_weights.hdf5')
+            np.savetxt(res_dir + '/U.dat', U)
+            np.savetxt(res_dir + '/V.dat', V)
+            np.savetxt(res_dir + '/theta.dat', theta)
         else:
             count = count + 1
 

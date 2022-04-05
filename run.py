@@ -2,9 +2,6 @@ import argparse
 import sys
 from data_manager import Data_Factory
 import numpy as np
-# windows setting
-import win_unicode_console
-win_unicode_console.enable()
 
 parser = argparse.ArgumentParser()
 
@@ -150,6 +147,18 @@ else:
 
         PMF(res_dir=res_dir, train_user=train_user, train_item=train_item, valid_user=valid_user, test_user=test_user,
             R=R, max_iter=max_iter, lambda_u=lambda_u, lambda_v=lambda_v, dimension=dimension)
+
+    elif select_model == "disf":
+        from models import DISFMF
+        # get Item's Images
+        print("loading Images...")
+        I_all = data_factory.read_items_images(img_path, image_size, item_ids)
+        U_all = data_factory.read_users_images(
+            img_path, image_size, image_num, item_ids, train_user[0])
+        print("finish.....")
+        DISFMF(max_iter=max_iter, res_dir=res_dir,
+               lambda_u=lambda_u, lambda_v=lambda_v, dimension=dimension, give_weight=give_item_weight,
+               train_user=train_user, train_item=train_item, valid_user=valid_user, test_user=test_user, R=R, image_u=U_all, image=I_all, image_size=image_size, image_num=image_num)
     else:
         from models import ISFMF
 

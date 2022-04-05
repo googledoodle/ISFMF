@@ -1,17 +1,11 @@
-'''
-Created on Dec 8, 2015
+from keras.preprocessing import sequence
+from keras.models import Model, Sequential
+from keras.layers import Input, Embedding, Dense, concatenate
+from keras.layers.core import Reshape, Flatten, Dropout
+from keras.layers.convolutional import Conv2D, MaxPooling2D
 
-@author: donghyun
-'''
 import numpy as np
 np.random.seed(1337)
-
-from keras.callbacks import EarlyStopping
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.layers.core import Reshape, Flatten, Dropout
-from keras.layers import Input, Embedding, Dense, concatenate
-from keras.models import Model, Sequential
-from keras.preprocessing import sequence
 
 
 class CNN_module():
@@ -31,17 +25,21 @@ class CNN_module():
 
         filter_lengths = [3, 4, 5]
 
-        doc_input = Input(shape=(max_len,), dtype='int32', name='doc_input')
+        doc_input = Input(
+            shape=(max_len,), dtype='int32', name='doc_input')
 
         '''Embedding Layer'''
 
         if init_W is None:
-            sentence_embeddings = Embedding(output_dim=emb_dim, input_dim=max_features, input_length=max_len, name='sentence_embeddings')(doc_input)
+            sentence_embeddings = Embedding(
+                output_dim=emb_dim, input_dim=max_features, input_length=max_len, name='sentence_embeddings')(doc_input)
         else:
-            sentence_embeddings = Embedding(output_dim=emb_dim, input_dim=max_features, input_length=max_len, weights=[init_W / 20], name='sentence_embeddings')(doc_input)
+            sentence_embeddings = Embedding(output_dim=emb_dim, input_dim=max_features, input_length=max_len, weights=[
+                                            init_W / 20], name='sentence_embeddings')(doc_input)
 
         '''Reshape Layer'''
-        reshape = Reshape(target_shape=(max_len, emb_dim, 1), name='reshape')(sentence_embeddings)  # chanels last
+        reshape = Reshape(target_shape=(max_len, emb_dim, 1), name='reshape')(
+            sentence_embeddings)  # chanels last
 
         '''Convolution Layer & Max Pooling Layer'''
         flatten_ = []
@@ -49,7 +47,8 @@ class CNN_module():
             model_internal = Sequential()
             model_internal.add(Conv2D(nb_filters, (i, emb_dim), activation="relu",
                                       name='conv2d_' + str(i), input_shape=(self.max_len, emb_dim, 1)))
-            model_internal.add(MaxPooling2D(pool_size=(self.max_len - i + 1, 1), name='maxpool2d_' + str(i)))
+            model_internal.add(MaxPooling2D(pool_size=(
+                self.max_len - i + 1, 1), name='maxpool2d_' + str(i)))
             model_internal.add(Flatten())
             flatten = model_internal(reshape)
             flatten_.append(flatten)
@@ -59,7 +58,8 @@ class CNN_module():
                               name='fully_connect')(concatenate(flatten_, axis=-1))
         dropout = Dropout(dropout_rate, name='dropout')(fully_connect)
         '''Projection Layer & Output Layer'''
-        pj = Dense(projection_dimension, activation='tanh', name='output')  # output layer
+        pj = Dense(projection_dimension, activation='tanh',
+                   name='output')  # output layer
         projection = pj(dropout)
 
         # Output Layergit

@@ -18,7 +18,8 @@ class Data_Factory():
         R = pickl.load(open(path + "/ratings.all", "rb"))
         print("Load preprocessed rating data - %s" % (path + "/ratings.all"))
         D_all = pickl.load(open(path + "/document.all", "rb"))
-        print("Load preprocessed document data - %s" % (path + "/document.all"))
+        print("Load preprocessed document data - %s" %
+              (path + "/document.all"))
         ids = pickl.load(open(path + "/ids.all", "rb"))
         print("Load preprocessed ids data - %s" % (path + "/ids.all"))
         return R, D_all, ids
@@ -29,7 +30,8 @@ class Data_Factory():
         print("Saving preprocessed rating data - %s" % (path + "/ratings.all"))
         pickl.dump(R, open(path + "/ratings.all", "wb"))
         print("Done!")
-        print("Saving preprocessed document data - %s" % (path + "/document.all"))
+        print("Saving preprocessed document data - %s" %
+              (path + "/document.all"))
         pickl.dump(D_all, open(path + "/document.all", "wb"))
         print("Saving preprocessed ids data - %s" % (path + "/ids.all"))
         pickl.dump(I_all, open(path + "/ids.all", "wb"))
@@ -37,7 +39,6 @@ class Data_Factory():
 
     def read_rating(self, path):
         results = []
-        num = 0
         if os.path.isfile(path):
             raw_ratings = open(path, 'r')
         else:
@@ -50,7 +51,6 @@ class Data_Factory():
             tmp = line.split()
             num_rating = int(tmp[0])
             if num_rating > 0:
-                num += 1
                 tmp_i, tmp_r = zip(*(elem.split(":") for elem in tmp[1::]))
                 index_list.append(np.array(tmp_i, dtype=int))
                 rating_list.append(np.array(tmp_r, dtype=float))
@@ -58,31 +58,19 @@ class Data_Factory():
                 index_list.append(np.array([], dtype=int))
                 rating_list.append(np.array([], dtype=float))
 
-        # print(num)
         results.append(index_list)
         results.append(rating_list)
 
         return results
 
     def read_items_images(self, path, image_size, item_ids):
-        I_all = np.empty((len(item_ids), image_size, image_size, 1), dtype="float32")
-        num = 0
-        for item in item_ids:
-            img = Image.open(path + item + ".png")
-            arr = np.asarray(img, dtype="float32")
-            arr.resize((image_size, image_size, 1))
-            I_all[num, :, :, :] = arr
-            num += 1
-
-        return I_all
-
-    def read_items_3images(self, path, image_size, item_ids):
-        I_all = np.empty((len(item_ids), image_size, image_size, 3), dtype="float32")
+        I_all = np.empty((len(item_ids), image_size,
+                         image_size, 3), dtype="float32")
         num = 0
         for item in item_ids:
             img = Image.open(path + item + ".jpg")
             arr = np.asarray(img, dtype="float32")
-            arr.resize((image_size, image_size, 1))
+            arr.resize((image_size, image_size, 3))
             I_all[num, :, :, :] = arr
             num += 1
 
@@ -93,7 +81,8 @@ class Data_Factory():
         user_num = len(train_user)
         for n in range(image_num):
             for i in range(user_num):
-                U = np.empty((user_num, image_size, image_size, 3), dtype="float32")
+                U = np.empty(
+                    (user_num, image_size, image_size, 3), dtype="float32")
                 ratings = len(train_user[i]) - 1
                 if(n <= ratings):
                     item_id = train_user[i][n]
@@ -102,7 +91,8 @@ class Data_Factory():
                     arr.resize((image_size, image_size, 3))
                     U[i, :, :, :] = arr
                 else:
-                    U[i, :, :, :] = np.empty((image_size, image_size, 3), dtype="float32")
+                    U[i, :, :, :] = np.empty(
+                        (image_size, image_size, 3), dtype="float32")
             U_all.append(U)
         return U_all
 
@@ -122,7 +112,8 @@ class Data_Factory():
             _word = tmp[0]
             _vec = np.array(tmp[1:], dtype=float)
             if _vec.shape[0] != dim:
-                print("Mismatch the dimension of pre-trained word vector with word embedding dimension!")
+                print(
+                    "Mismatch the dimension of pre-trained word vector with word embedding dimension!")
                 sys.exit()
             word2vec_dic[_word] = _vec
             mean = mean + _vec
@@ -144,7 +135,8 @@ class Data_Factory():
         return W
 
     def split_data(self, ratio, R):
-        print("Randomly splitting rating data into training set (%.1f) and test set (%.1f)..." % (1 - ratio, ratio))
+        print("Randomly splitting rating data into training set (%.1f) and test set (%.1f)..." % (
+            1 - ratio, ratio))
         train = []
         for i in range(R.shape[0]):
             user_rating = R[i].nonzero()[1]
@@ -171,14 +163,15 @@ class Data_Factory():
             train.extend(remain_rating_list[:num_addition])
             tmp_test = remain_rating_list[num_addition:]
             random.shuffle(tmp_test)
-            valid = tmp_test[::3]
-            test = tmp_test[1::3]
+            valid = tmp_test[::2]
+            test = tmp_test[1::2]
 
             trainset_u_idx, trainset_i_idx = zip(*train)
             trainset_u_idx = set(trainset_u_idx)
             trainset_i_idx = set(trainset_i_idx)
             if len(trainset_u_idx) != R.shape[0] or len(trainset_i_idx) != R.shape[1]:
-                print("Fatal error in split function. Check your data again or contact authors")
+                print(
+                    "Fatal error in split function. Check your data again or contact authors")
                 sys.exit()
 
         print("Finish constructing training set and test set")
@@ -450,7 +443,8 @@ class Data_Factory():
 
         R = csr_matrix((rating, (user, item)))
 
-        print("Finish preprocessing rating data - # user: %d, # item: %d, # ratings: %d" % (R.shape[0], R.shape[1], R.nnz))
+        print("Finish preprocessing rating data - # user: %d, # item: %d, # ratings: %d" %
+              (R.shape[0], R.shape[1], R.nnz))
 
         # 2nd scan document file to make idx2plot dictionary according to
         # indices of items in rating matrix
@@ -470,7 +464,8 @@ class Data_Factory():
                 map_idtoplot[i] = ' '.join(eachid_plot)
 
         print("\tRemoving stop words...")
-        print("\tFiltering words by TF-IDF score with max_df: %.1f, vocab_size: %d" % (_max_df, _vocab_size))
+        print("\tFiltering words by TF-IDF score with max_df: %.1f, vocab_size: %d" %
+              (_max_df, _vocab_size))
 
         # Make vocabulary by document
         vectorizer = TfidfVectorizer(max_df=_max_df, stop_words={

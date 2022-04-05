@@ -1,17 +1,9 @@
-import os
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers.convolutional import Conv2D, MaxPooling2D
+from keras.models import Sequential, Model
+
 import numpy as np
 np.random.seed(3934)
-
-from keras.callbacks import EarlyStopping
-from keras.models import Model, Sequential
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.layers import Dense, Dropout, Flatten
-from keras.preprocessing import sequence
-from keras.preprocessing.image import img_to_array
-from keras.utils import plot_model
-from keras.callbacks import TensorBoard as tb
-import tensorflow as tf  # add
-from keras.utils.training_utils import multi_gpu_model  # add
 
 
 class ISF_module():
@@ -23,19 +15,28 @@ class ISF_module():
     def __init__(self, output_dimesion, image_size):
         super(ISF_module, self).__init__()
 
-        model = Sequential()
-        model.add(Conv2D(8, (3, 3), activation='relu', padding='same', input_shape=(image_size, image_size, 1)))
-        model.add(MaxPooling2D((2, 2)))
-        model.add(Conv2D(16, (3, 3), activation='relu', padding='same'))
-        model.add(MaxPooling2D((2, 2)))
-        model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
-        model.add(MaxPooling2D((2, 2)))
+        base_model = Sequential()
+        base_model.add(Conv2D(32, 5, strides=(1, 1), activation='relu', padding='same', input_shape=(image_size, image_size, 3), name="conv1"))
+        base_model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
+        base_model.add(Conv2D(48, 5, strides=(1, 1), activation='relu', padding='same', name="conv2"))
+        base_model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
+        base_model.add(Conv2D(64, 5, strides=(1, 1), activation='relu', padding='same', name="conv3"))
+        base_model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
+        base_model.add(Conv2D(128, 5, strides=(1, 1), activation='relu', padding='same', name="conv4"))
+        base_model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
 
-        model.add(Flatten())
+        base_model.load_weights('dl_models/deepContour.h5', by_name=True)
+
+        x = base_model.output
+        x = Flatten()(x)
+        out = Dense(output_dimesion, activation='tanh', name="FC")(x)
         # model.add(Dropout(0.5))
-        model.add(Dense(output_dimesion, activation='tanh', name="FC2"))
-        # model = multi_gpu_model(model, gpus=2)
+        model = Model(inputs=base_model.input, outputs=out)
+
+        for layer in base_model.layers:
+            layer.trainable = False
         model.compile(loss='mse', optimizer='rmsprop')
+        # plot_model(model, to_file='model.png', show_shapes="true")
         self.model = model
 
     def load_model(self, model_path):
@@ -52,7 +53,7 @@ class ISF_module():
         np.random.seed(seed)
         item_weight = np.random.permutation(item_weight)
 
-        print("Train...old CNN module")
+        print("Train...ISF module")
         history = self.model.fit(x=X_train, y=V,
                                  verbose=0, batch_size=self.batch_size, epochs=self.nb_epoch,
                                  sample_weight=item_weight)

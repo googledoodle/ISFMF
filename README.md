@@ -11,13 +11,13 @@
 
 #### 1. This model is modiﬁed on the basis of the [ConvMF](http://dm.postech.ac.kr/~cartopy/ConvMF/) and the requirements are as follows:
 
-- Python 3.5
-- Keras 2.1.3
-- tensorflow 1.7
-- CUDA 9.0
-- cudnn 7.0.5
+- Python 3.9
+- tensorflow 2.6
+- CUDA 11.2
+- cudnn 8.1
 
 #### 2. Datasets
+
 - Our dataset is [here](https://drive.google.com/file/d/1bRb9mbQXQzFbTeEAVue8FVK8BoNeq1qC/view?usp=sharing) and unzip them into the folder "data".
 
 #### 3. How to Run
@@ -27,26 +27,26 @@ Note: Run `python <install_path>/run.py -h` in bash shell. You will see how to c
 #### 4. Configuration
 You can evaluate our model with different settings in terms of the size of dimension, the value of hyperparameter, the size of image, and etc. Below is a description of all the configurable parameters and their defaults:
 
-Parameter | Default
----       | ---
-`-h`, `--help` | {}
-`-c <bool>`, `--do_preprocess <bool>` | `False`
-`-r <path>`, `--raw_rating_data_path <path>` | {}
-`-i <path>`, `--raw_item_document_data_path <path>`| {}
-`-m <integer>`, `--min_rating <integer>` | {}
-`-l <integer>`, `--max_length_document <integer>` | 300
-`-f <float>`, `--max_df <float>` | 0.5
-`-s <integer>`, `--vocab_size <integer>` | 8000
-`-t <float>`, `--split_ratio <float>` | 0.2
-`-d <path>`, `--data_path <path>` | {}
-`-a <path>`, `--aux_path <path>` | {}
-`-o <path>`, `--res_dir <path>` | {}
-`-k <integer>`, `--dimension <integer>` | 50
-`-u <float>`, `--lambda_u <float>` | {}
-`-v <float>`, `--lambda_v <float>` | {}
-`-n <integer>`, `--max_iter <integer>` | 200
-`-is <integer>`, `--image_size <integer>` | 130
-`-sm <str>`, `--select_model <str>` | {}
+| Parameter                                           | Default |
+| --------------------------------------------------- | ------- |
+| `-h`, `--help`                                      | {}      |
+| `-c <bool>`, `--do_preprocess <bool>`               | `False` |
+| `-r <path>`, `--raw_rating_data_path <path>`        | {}      |
+| `-i <path>`, `--raw_item_document_data_path <path>` | {}      |
+| `-m <integer>`, `--min_rating <integer>`            | {}      |
+| `-l <integer>`, `--max_length_document <integer>`   | 300     |
+| `-f <float>`, `--max_df <float>`                    | 0.5     |
+| `-s <integer>`, `--vocab_size <integer>`            | 8000    |
+| `-t <float>`, `--split_ratio <float>`               | 0.2     |
+| `-d <path>`, `--data_path <path>`                   | {}      |
+| `-a <path>`, `--aux_path <path>`                    | {}      |
+| `-o <path>`, `--res_dir <path>`                     | {}      |
+| `-k <integer>`, `--dimension <integer>`             | 50      |
+| `-u <float>`, `--lambda_u <float>`                  | {}      |
+| `-v <float>`, `--lambda_v <float>`                  | {}      |
+| `-n <integer>`, `--max_iter <integer>`              | 200     |
+| `-is <integer>`, `--image_size <integer>`           | 130     |
+| `-sm <str>`, `--select_model <str>`                 | {}      |
 
 1. `do_preprocess`: `True` or `False` in order to preprocess raw data.
 2. `raw_rating_data_path`: path to a raw rating data path. The data format should be `user id,item id,rating`.
